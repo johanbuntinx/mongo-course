@@ -1,6 +1,7 @@
 package com.tengen.homework;
 
 import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -24,24 +25,30 @@ public class HoweWork3_1 {
         DBCollection collection = getCollection("school","students");
 
 
-        DBObject doc = collection.findOne();
-        System.out.println("doc = " + doc);
-        BasicDBList scores = (BasicDBList) doc.get("scores");
-        System.out.println("scores = " + scores);
+        //DBObject doc = collection.findOne();
+//        System.out.println("doc = " + doc);
+//        BasicDBList scoresList = (BasicDBList) doc.get("scores");
+//        System.out.println("scoresList = " + scoresList);
+//        Scores scores = new Scores(scoresList);
+//        scores.removeLowestHomeworkScore();
 
-        //DBCursor cursor = collection.find();
+        DBCursor cursor = collection.find();
 
-//        try{
-//            while (cursor.hasNext()){
-//                DBObject doc = cursor.next();
-//                doc.get("scores");
-//
-//
-//
-//            }
-//        }finally{
-//            cursor.close();
-//        }
+        try{
+            while (cursor.hasNext()){
+                DBObject doc = cursor.next();
+                System.out.println("doc = " + doc);
+                BasicDBList scoresList = (BasicDBList) doc.get("scores");
+                System.out.println("scoresList = " + scoresList);
+                Scores scores = new Scores(scoresList);
+                List scoresWithoutLowestHomework = scores.removeLowestHomeworkScore();
+
+               // collection.update(new BasicDBObject("_id", doc.get("_id")),new BasicDBObject("$set", new BasicDBObject("scores",scoresWithoutLowestHomework)));
+
+            }
+        }finally{
+            cursor.close();
+        }
 
     }
 
@@ -52,20 +59,36 @@ public class HoweWork3_1 {
             this.dbScores = dbScores;
         }
 
-        public void removeLowestHomeworkScore(){
-            List nonHomeWorkItems = Lists.newArrayList(Collections2.filter(dbScores, new Predicate<Object>() {
+        public List removeLowestHomeworkScore(){
+            Predicate<Object> isHomework = new Predicate<Object>() {
                 @Override
                 public boolean apply(Object input) {
-                    return !((Map<String, Object>)input).get("type").equals("homework");
+                    return ((Map) input).get("type").equals("homework");
                 }
-            }));
-            List sortedHomework
+            };
+            List nonHomeWorkScores = Lists.newArrayList(Collections2.filter(dbScores, Predicates.not(isHomework)));
+            System.out.println("nonHomeWorkScores = " + nonHomeWorkScores);
+            List<Object> homeWorkScores = Lists.newArrayList(Collections2.filter(dbScores, isHomework));
+            Comparator byScoreDesc = new Comparator() {
+                @Override
+                public int compare(Object o1, Object o2) {
+                    return - ((Double) ((Map) o1).get("score")).compareTo((Double) ((Map) o2).get("score"));
+
+                }
+            };
+            Collections.sort(homeWorkScores, byScoreDesc);
+
+            System.out.println("homeWorkScores = " + homeWorkScores);
+
+            homeWorkScores.remove(homeWorkScores.size()-1);
+            List allWithoutLowestHomeworkScore = Lists.newArrayList(nonHomeWorkScores);
+            allWithoutLowestHomeworkScore.addAll(homeWorkScores);
+            System.out.println("allWithoutLowestHomeworkScore = " + allWithoutLowestHomeworkScore);
+            return allWithoutLowestHomeworkScore;
 
         }
 
-        public Map<String, Object> asMap(){
-            return dbScores;
-        }
+
 
     }
 

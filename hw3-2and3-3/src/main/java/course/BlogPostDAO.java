@@ -17,14 +17,11 @@
 
 package course;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
-import com.mongodb.WriteResult;
+import com.mongodb.*;
 import com.sun.org.apache.bcel.internal.generic.ACONST_NULL;
 
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 public class BlogPostDAO {
@@ -39,7 +36,8 @@ public class BlogPostDAO {
 
         DBObject post = null;
         // XXX HW 3.2,  Work Here
-
+        QueryBuilder builder = QueryBuilder.start("permalink").is(permalink);
+        post = postsCollection.findOne(builder.get());
 
 
         return post;
@@ -52,6 +50,9 @@ public class BlogPostDAO {
         List<DBObject> posts = null;
         // XXX HW 3.2,  Work Here
         // Return a list of DBObjects, each one a post from the posts collection
+
+        DBCursor cursor = postsCollection.find();
+        posts = cursor.sort(new BasicDBObject("date",-1)).limit(limit).toArray(limit);
 
         return posts;
     }
@@ -78,6 +79,16 @@ public class BlogPostDAO {
         // - we created the permalink for you above.
 
         // Build the post object and insert it
+        post.put("title",title);
+        post.put("author",username);
+        post.put("body",body);
+        post.put("permalink", permalink);
+        post.put("tags",tags);
+        post.put("comments", Collections.emptyList());
+        post.put("date",new Date());
+
+        postsCollection.insert(post);
+
 
 
         return permalink;
@@ -104,7 +115,13 @@ public class BlogPostDAO {
         // - email is optional and may come in NULL. Check for that.
         // - best solution uses an update command to the database and a suitable
         //   operator to append the comment on to any existing list of comments
-
+        BasicDBObject comment = new BasicDBObject();
+        comment.put("author",name);
+        if (email != null && email.trim().length() > 0){
+            comment.put("email", email);
+        }
+        comment.put("body",body);
+        postsCollection.update(new BasicDBObject("permalink",permalink),new BasicDBObject("$push" ,new BasicDBObject("comments",comment)));
 
 
     }
